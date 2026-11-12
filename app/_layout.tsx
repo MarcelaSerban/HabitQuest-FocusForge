@@ -1,10 +1,14 @@
 import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
+import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/components/useColorScheme';
+import { migrateDbIfNeeded } from '@/src/database/db';
+import { setHabitDb } from '@/src/store/useHabitStore';
+import { AppThemeProvider, useAppTheme } from '@/src/theme';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -39,16 +43,26 @@ export default function RootLayout() {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <SQLiteProvider databaseName="focusforge.db" onInit={migrateDbIfNeeded}>
+      <AppThemeProvider>
+        <RootLayoutNav />
+      </AppThemeProvider>
+    </SQLiteProvider>
+  );
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const { colors } = useAppTheme();
+  // Dăm store-ului Zustand conexiunea la baza de date, înainte să se deseneze ecranele.
+  setHabitDb(useSQLiteContext());
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={colors.mode === 'dark' ? DarkTheme : DefaultTheme}>
+      <StatusBar style={colors.mode === 'dark' ? 'light' : 'dark'} />
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="habit-form" options={{ presentation: 'modal' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>
